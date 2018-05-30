@@ -1,0 +1,16 @@
+import sys
+
+
+Player1 = input("Who is Player1 ?")
+Player2 = input("Who is Player2 ?")
+
+
+Player1 = False      
+while Player1 == False:   
+
+    Player1_answer = input("%s, Rock, Paper, Scissors.. SHOOT!" % Player1)
+    Player2_answer = input("%s, Rock, Paper, Scissors.. SHOOT!" % Player2)
+
+
+    if Player1 == Player2:
+        print("Tie!")
