@@ -14,3 +14,33 @@ while Player1 == False:
 
     if Player1 == Player2:
         print("Tie!")
+            
+            
+    elif Player1 == "Rock":
+        if Player2 == "Paper":
+            print("You lose!", Paper, "covers", Rock)
+        else:
+            print("You win!", Rock, "beats", Paper)
+
+            
+    elif Player1 == 'Paper':
+        if Player2 == 'Scissors':
+            print("You lose!", Scissors, "cut", Paper)
+        else:
+            print("You win!", Paper, "covers", Scissors)
+    
+    
+    elif Player1 == 'Scissors':
+        if Player2 == 'Rock':
+            print("You win!", Rock, "beats", Scissors)
+        else:
+            print("You win!", Scissors, "cut", Rock)
+    
+    
+    else:
+        print("Not a valid play, Try Again")
+        sys.exit()
+        
+
+Player1 = False 
+    
